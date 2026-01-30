@@ -196,6 +196,7 @@
             font-size: 18px;
             z-index: 1000;
             transition: all 0.2s ease;
+            opacity: 0.4;
         }
 
         #settings-toggle:hover {
@@ -296,7 +297,7 @@
 <div id="debug-controls">
     <div id="debug-header">Simulation Controls</div>
     <label>
-        <input type="checkbox" id="sim-active" onchange="toggleSim()"> Enable Sim
+        <input type="checkbox" id="sim-active" onchange="toggleSim()"> Enable Sim (Debug)
     </label>
     <label>
         Hour (0-23): <input type="number" id="sim-hour" value="23" min="0" max="23" style="width: 50px; background: #333; color: white; border: 1px solid #555; padding: 4px; border-radius: 4px;">
