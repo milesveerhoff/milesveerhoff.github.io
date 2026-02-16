@@ -4,29 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WUVT Studio Clock</title>
+    <link id="favicon" rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=">
+    
     <style>
         :root {
-            --wuvt-bg: #0a0a0a;
-            --wuvt-card: rgba(24, 24, 24, 0.8);
-            --wuvt-text: #e7edff;
-            --wuvt-dim: #707991;
-            --wuvt-border: #2c2c2c;
-            --wuvt-green: rgba(27, 94, 32, 0.6);
-            --wuvt-yellow: rgba(249, 168, 37, 0.5);
-            --wuvt-red: rgba(183, 28, 28, 0.6);
-            --speed: 1.4s; 
+            /* --- PALETTE: WUVT (Derived from wuvt.css) --- */
+            --wuvt-bg: #cfeeff;          
+            --wuvt-card: rgba(255,255,255,0.72); 
+            --wuvt-border: #BCCCD3;      
+            
+            --wuvt-text: #000000;
+            --wuvt-dim: #666666;
+            
+            /* Alert Colors (Backgrounds) */
+            --status-green-bg: #e8f5e9;
+            --status-yellow-bg: #fffde7;
+            --status-red-bg: #ffebee;
+            
+            /* Alert Colors (Borders) */
+            --status-green-border: #4CAF50;
+            --status-yellow-border: #FFC107;
+            --status-red-border: #ec1c23; 
+
+            --speed: 0.5s; 
         }
 
         body {
             background-color: var(--wuvt-bg);
+            background-image: linear-gradient(to bottom, #cfeeff 0%, #cfeeff 100%);
             color: var(--wuvt-text);
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            font-family: Helvetica, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            transition: background-color var(--speed) ease;
             overflow-x: hidden;
             flex-direction: column;
         }
@@ -35,7 +47,11 @@
             width: 90%;
             max-width: 900px;
             text-align: center;
-            padding: 20px 0;
+            background-color: var(--wuvt-card);
+            border: 5px solid var(--wuvt-border);
+            padding: 30px;
+            margin-bottom: 50px;
+            position: relative;
         }
 
         /* --- CLOCK STYLES --- */
@@ -44,232 +60,196 @@
             align-items: baseline;
             justify-content: center;
             flex-wrap: wrap;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--wuvt-border);
         }
 
         #current-time {
-            font-size: clamp(4rem, 18vw, 10rem);
+            font-size: clamp(4rem, 15vw, 10rem);
             font-weight: 700;
             letter-spacing: -3px;
-            font-variant-numeric: tabular-nums;
             line-height: 1;
+            color: #222;
         }
 
         #ampm {
-            font-size: clamp(1rem, 4vw, 2rem);
+            font-size: clamp(1rem, 3vw, 2rem);
             color: var(--wuvt-dim);
             margin-left: 10px;
-            text-transform: lowercase;
-            font-weight: 500;
+            text-transform: uppercase;
+            font-weight: bold;
         }
 
         /* --- ALERT BOX --- */
         #ui-container {
             position: relative;
-            background: var(--wuvt-card);
+            background: #fff;
             border: 1px solid var(--wuvt-border);
-            border-radius: 12px;
+            border-left: 10px solid var(--wuvt-border);
             margin: 0 auto;
-            width: 85%;
+            width: 95%;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(20px);
             height: 0;
             overflow: hidden;
-            transition: 
-                opacity var(--speed) ease, 
-                transform var(--speed) cubic-bezier(0.4, 0, 0.2, 1),
-                background-color var(--speed) ease,
-                height var(--speed) ease,
-                padding var(--speed) ease;
-            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            text-align: left;
         }
 
         body.alert-active #ui-container {
             opacity: 1;
             visibility: visible;
-            transform: translateY(0);
             height: auto;
-            padding: 2rem 1rem;
-            margin: 2rem auto;
+            padding: 1.5rem;
+            margin: 0 auto 2rem auto;
+        }
+
+        /* Alert Color Phases */
+        body.green-phase #ui-container { 
+            background-color: var(--status-green-bg); 
+            border-left-color: var(--status-green-border); 
+        }
+        body.yellow-phase #ui-container { 
+            background-color: var(--status-yellow-bg); 
+            border-left-color: var(--status-yellow-border); 
+        }
+        body.red-phase #ui-container { 
+            background-color: var(--status-red-bg); 
+            border-left-color: var(--status-red-border); 
         }
 
         #hide-btn {
             position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--wuvt-dim);
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: #999;
             width: 30px;
             height: 30px;
-            border-radius: 50%;
             cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
+            font-size: 1.2rem;
+            font-weight: bold;
         }
-        
-        #hide-btn:hover { background: rgba(255, 255, 255, 0.15); }
-
-        body.manual-hide #ui-container {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        body.green-phase #ui-container { background-color: var(--wuvt-green); border-color: rgba(46, 125, 50, 0.4); }
-        body.yellow-phase #ui-container { background-color: var(--wuvt-yellow); border-color: rgba(253, 216, 53, 0.4); color: white; }
-        body.red-phase #ui-container { background-color: var(--wuvt-red); border-color: rgba(211, 47, 47, 0.4); }
+        #hide-btn:hover { color: var(--status-red-border); }
 
         #message { 
-            font-size: clamp(1.8rem, 5vw, 2.8rem); 
-            font-weight: 600; 
+            font-size: clamp(1.5rem, 4vw, 2.2rem); 
+            font-weight: 700; 
             margin-bottom: 0.25rem; 
             line-height: 1.1;
+            color: #000;
         }
         
         #status-text { 
-            font-size: clamp(1rem, 3vw, 1.2rem); 
-            opacity: 0.8; 
-            font-weight: 400; 
+            font-size: 0.9rem; 
+            color: #555;
+            margin-bottom: 10px;
         }
         
         #countdown { 
-            font-size: clamp(2rem, 6vw, 3rem); 
+            font-size: clamp(1.5rem, 4vw, 2rem); 
             font-weight: 700; 
-            margin-top: 1rem; 
             font-variant-numeric: tabular-nums; 
-            letter-spacing: 1px; 
+            color: #333;
         }
 
         #reminder {
-            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-            margin-top: 1.2rem;
+            font-size: 1rem;
+            margin-top: 1rem;
             padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            opacity: 0.9;
+            border-top: 1px dashed #ccc;
+            font-style: italic;
+            color: #0071BC;
+            font-weight: bold;
         }
 
         /* --- TIMELINE --- */
         .timeline {
             display: flex;
             justify-content: center;
-            gap: 80px;
-            padding-top: 2rem;
-            border-top: 1px solid var(--wuvt-border);
+            gap: 0;
+            padding-top: 0;
             width: 100%;
+            border: 1px solid #fff;
         }
 
         .timeline-item {
             flex: 1;
             min-width: 0;
+            background: #c5d5dc;
+            padding: 15px;
+            border: 1px solid white;
+        }
+        
+        .timeline-item:last-child {
+            background: rgba(197, 213, 220, 0.5); 
         }
 
         .timeline-label { 
             display: block; 
             color: var(--wuvt-dim); 
-            font-size: 0.75rem; 
-            font-weight: 600; 
+            font-size: 0.8rem; 
+            font-weight: 700; 
             text-transform: uppercase; 
-            letter-spacing: 1.5px; 
-            margin-bottom: 6px; 
+            letter-spacing: 1px; 
+            margin-bottom: 8px; 
         }
         
         .timeline-value { 
             font-size: 1.1rem; 
             font-weight: 500;
             white-space: nowrap; 
+            color: #000;
         }
 
-        /* --- DEBUG PANEL & TOGGLE --- */
+        /* --- DEBUG PANEL --- */
         #settings-toggle {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--wuvt-dim);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            z-index: 1000;
-            transition: all 0.2s ease;
-            opacity: 0;
-        }
-
-        #settings-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--wuvt-border);
             color: #fff;
-            transform: rotate(45deg);
+            border: none;
+            border-radius: 4px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 20px;
+            z-index: 1000;
+            opacity: 0.5;
+            transition: opacity 0.2s;
         }
+        #settings-toggle:hover { opacity: 1; }
 
         #debug-controls {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background: #1a1a1a;
-            border-top: 1px solid #333;
+            background: #333;
+            color: #fff;
             padding: 20px;
             box-sizing: border-box;
-            transform: translateY(100%); /* Hidden by default */
+            transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 999;
             text-align: center;
-            font-family: monospace;
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
-            align-items: center;
             gap: 20px;
         }
+        #debug-controls.visible { transform: translateY(0); }
+        #debug-controls input { background: #555; border: 1px solid #777; color: white; padding: 4px; }
 
-        #debug-controls.visible {
-            transform: translateY(0);
-        }
-
-        #debug-controls label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--wuvt-text);
-        }
-
-        #debug-header {
-            width: 100%;
-            color: var(--wuvt-yellow);
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-        }
-
-        /* --- MOBILE OPTIMIZATIONS --- */
+        /* --- MOBILE --- */
         @media (max-width: 768px) {
-            #wrapper { width: 95%; }
-            #clock-wrap { margin-bottom: 0.5rem; }
-            .timeline { gap: 20px; padding-top: 1.5rem; }
-            .timeline-value { font-size: 0.95rem; }
-            #ui-container { width: 95%; }
-            body.alert-active #ui-container { padding: 1.5rem 0.5rem; margin: 1.5rem auto; }
-            #hide-btn { width: 44px; height: 44px; font-size: 18px; top: 5px; right: 5px; }
-            
-            #debug-controls {
-                flex-direction: column;
-                padding-bottom: 80px; /* Space for toggle button */
-                gap: 15px;
-            }
+            #wrapper { width: 95%; padding: 15px; }
+            .timeline { flex-direction: column; gap: 10px; }
+            .timeline-item { width: auto; border: 1px solid #fff; }
+            .timeline-value { white-space: normal; }
+            #ui-container { width: 100%; box-sizing: border-box; }
         }
     </style>
 </head>
@@ -278,14 +258,14 @@
 <div id="wrapper">
     <div id="clock-wrap">
         <span id="current-time">12:00:00</span>
-        <span id="ampm">am</span>
+        <span id="ampm">PM</span>
     </div>
 
     <div id="ui-container">
         <button id="hide-btn" onclick="dismissTask()" aria-label="Dismiss Alert">✕</button>
         <div id="message">task</div>
-        <div id="status-text">--</div>
         <div id="countdown">00:00</div>
+        <div id="status-text">--</div>
         <div id="reminder"></div>
     </div>
 
@@ -304,15 +284,15 @@
 <button id="settings-toggle" onclick="toggleDebugPanel()" aria-label="Toggle Simulation">⚙️</button>
 
 <div id="debug-controls">
-    <div id="debug-header">Debug Settings</div>
+    <strong>DEBUG:</strong>
     <label>
-        <input type="checkbox" id="sim-active" onchange="toggleSim()"> Enable Sim (Debug)
+        <input type="checkbox" id="sim-active" onchange="toggleSim()"> Enable Sim
     </label>
     <label>
-        Hour (0-23): <input type="number" id="sim-hour" value="23" min="0" max="23" style="width: 50px; background: #333; color: white; border: 1px solid #555; padding: 4px; border-radius: 4px;">
+        Hour: <input type="number" id="sim-hour" value="23" min="0" max="23" style="width: 50px;">
     </label>
     <label>
-        Minute (0-59): 
+        Minute: 
         <input type="range" id="sim-min" value="58" min="0" max="59" oninput="updateSimDisplay()">
         <span id="sim-min-val" style="width: 2ch; display: inline-block;">58</span>
     </label>
@@ -329,6 +309,57 @@
     let currentActiveTargetMark = null;
     let isManuallyDismissed = false;
     let simActive = false;
+    
+    // Track current phase to update favicon only on change
+    let currentFaviconPhase = 'default'; 
+
+    function setFavicon(color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        // 1. Draw Background Circle
+        ctx.beginPath();
+        ctx.arc(32, 32, 30, 0, 2 * Math.PI, false);
+        ctx.fillStyle = color;
+        ctx.fill();
+        
+        // 2. Draw Border (Darker for visibility)
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#555'; // Dark grey border
+        ctx.stroke();
+
+        // 3. Draw Center Dot
+        ctx.beginPath();
+        ctx.arc(32, 32, 3, 0, 2 * Math.PI, false);
+        ctx.fillStyle = '#333';
+        ctx.fill();
+
+        // 4. Draw Hands (Static at 3:00 for clarity)
+        ctx.strokeStyle = '#333';
+        ctx.lineCap = 'round';
+
+        // Hour Hand
+        ctx.beginPath();
+        ctx.moveTo(32, 32);
+        ctx.lineTo(48, 32); 
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Minute Hand
+        ctx.beginPath();
+        ctx.moveTo(32, 32);
+        ctx.lineTo(32, 10); 
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        const link = document.getElementById('favicon');
+        link.href = canvas.toDataURL("image/png");
+    }
+
+    // Initialize default White favicon
+    setFavicon('#ffffff');
 
     function dismissTask() {
         document.getElementById('monitor-body').classList.add('manual-hide');
@@ -351,7 +382,7 @@
     function formatTime(date) {
         let h = date.getHours();
         let m = String(date.getMinutes()).padStart(2, '0');
-        let period = h >= 12 ? 'pm' : 'am';
+        let period = h >= 12 ? 'PM' : 'AM';
         let h12 = h % 12 || 12; 
         return `${String(h12).padStart(2, '0')}:${m} ${period}`;
     }
@@ -379,7 +410,7 @@
 
         // 1. Update Main Clock
         const h12 = now.getHours() % 12 || 12;
-        const ampm = now.getHours() >= 12 ? 'pm' : 'am';
+        const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
         document.getElementById('current-time').textContent = 
             `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         document.getElementById('ampm').textContent = ampm;
@@ -400,7 +431,8 @@
         }
 
         const body = document.getElementById('monitor-body');
-        
+        let newPhase = 'default';
+
         // 3. Reset manual-hide and track target change
         if (active) {
             if (currentActiveTargetMark !== active.mark) {
@@ -421,9 +453,7 @@
         let prevDate = new Date(now.getTime());
         prevDate.setMinutes(targets[lastIdx].mark);
         prevDate.setSeconds(0);
-        if (targets[lastIdx].mark > m) {
-            prevDate.setHours(now.getHours() - 1);
-        }
+        if (targets[lastIdx].mark > m) prevDate.setHours(now.getHours() - 1);
 
         let nextIdx = targets.findIndex(t => t.mark > m);
         if (nextIdx === -1) nextIdx = 0;
@@ -431,52 +461,62 @@
         let nextDate = new Date(now.getTime());
         nextDate.setMinutes(targets[nextIdx].mark);
         nextDate.setSeconds(0);
-        if (targets[nextIdx].mark <= m) {
-            nextDate.setHours(now.getHours() + 1);
-        }
+        if (targets[nextIdx].mark <= m) nextDate.setHours(now.getHours() + 1);
 
-        // Apply Midnight Logic to Timeline Items
-        let prevText = getTaskText(targets[lastIdx], prevDate);
-        let nextText = getTaskText(targets[nextIdx], nextDate);
+        document.getElementById('last-event').textContent = `${getTaskText(targets[lastIdx], prevDate)} (${formatTime(prevDate)})`;
+        document.getElementById('next-event').textContent = `${getTaskText(targets[nextIdx], nextDate)} (${formatTime(nextDate)})`;
 
-        document.getElementById('last-event').textContent = `${prevText} (${formatTime(prevDate)})`;
-        document.getElementById('next-event').textContent = `${nextText} (${formatTime(nextDate)})`;
-
-        // 5. Render Action Card
+        // 5. Render Action Card & Determine Phase
         if (active && !isManuallyDismissed) {
             body.classList.add('alert-active');
             
             let targetDate = new Date(now.getTime());
             targetDate.setMinutes(active.mark);
             targetDate.setSeconds(0);
-            if (active.mark === 0 && m >= 54) {
-                targetDate.setHours(now.getHours() + 1);
-            }
-            // Use same helper for Active Alert Text
+            if (active.mark === 0 && m >= 54) targetDate.setHours(now.getHours() + 1);
+
             document.getElementById('message').textContent = getTaskText(active, targetDate);
-            
-            // Display reminder
             document.getElementById('reminder').textContent = active.reminder || '';
 
             if (diff < 0) {
                 const secsLeft = (Math.abs(diff) * 60) - s;
                 body.classList.remove('red-phase');
-                body.classList.add(secsLeft < 60 ? 'yellow-phase' : 'green-phase');
+                
+                if (secsLeft < 60) {
+                    body.classList.add('yellow-phase');
+                    body.classList.remove('green-phase');
+                    newPhase = 'yellow';
+                } else {
+                    body.classList.add('green-phase');
+                    body.classList.remove('yellow-phase');
+                    newPhase = 'green';
+                }
                 
                 document.getElementById('status-text').textContent = `Target: ${formatTime(targetDate)}`;
                 document.getElementById('countdown').textContent = `${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} until start`;
             } else {
                 body.classList.remove('green-phase', 'yellow-phase');
                 body.classList.add('red-phase');
+                newPhase = 'red';
                 
                 let graceDate = new Date(now.getTime());
                 graceDate.setMinutes(active.mark + 6);
                 graceDate.setSeconds(0);
                 
-                document.getElementById('status-text').textContent = `Within grace period until ${formatTime(graceDate)}`;
+                document.getElementById('status-text').textContent = `Grace period ends ${formatTime(graceDate)}`;
                 const secsLeft = (6 - diff) * 60 - s;
                 document.getElementById('countdown').textContent = `${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} left`;
             }
+        }
+
+        // 6. Update Favicon if phase changed
+        if (newPhase !== currentFaviconPhase) {
+            currentFaviconPhase = newPhase;
+            // USING LIGHTER PASTEL COLORS FOR ICON
+            if (newPhase === 'green') setFavicon('#A5D6A7');       // Pastel Green
+            else if (newPhase === 'yellow') setFavicon('#FFF59D'); // Pastel Yellow
+            else if (newPhase === 'red') setFavicon('#EF9A9A');    // Pastel Red
+            else setFavicon('#ffffff');                            // White (Default)
         }
     }
 
