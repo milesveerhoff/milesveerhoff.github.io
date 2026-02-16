@@ -147,6 +147,14 @@
             letter-spacing: 1px; 
         }
 
+        #reminder {
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            margin-top: 1.2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.9;
+        }
+
         /* --- TIMELINE --- */
         .timeline {
             display: flex;
@@ -196,7 +204,7 @@
             font-size: 18px;
             z-index: 1000;
             transition: all 0.2s ease;
-            opacity: 0.4;
+            opacity: 0;
         }
 
         #settings-toggle:hover {
@@ -278,6 +286,7 @@
         <div id="message">task</div>
         <div id="status-text">--</div>
         <div id="countdown">00:00</div>
+        <div id="reminder"></div>
     </div>
 
     <div class="timeline">
@@ -311,10 +320,10 @@
 
 <script>
     const targets = [
-        { mark: 0, text: "Read Station ID" },
-        { mark: 15, text: "Read PSA" },
-        { mark: 30, text: "Read Weather" },
-        { mark: 45, text: "Read PSA" }
+        { mark: 0, text: "Read Legal ID / Underwriting", reminder: "WUVT-FM 90.7 Blacksburg" },
+        { mark: 15, text: "Read PSA", reminder: "" },
+        { mark: 30, text: "Read Promo / Underwriting", reminder: "" },
+        { mark: 45, text: "Read PSA", reminder: "" }
     ];
 
     let currentActiveTargetMark = null;
@@ -445,6 +454,9 @@
             }
             // Use same helper for Active Alert Text
             document.getElementById('message').textContent = getTaskText(active, targetDate);
+            
+            // Display reminder
+            document.getElementById('reminder').textContent = active.reminder || '';
 
             if (diff < 0) {
                 const secsLeft = (Math.abs(diff) * 60) - s;
