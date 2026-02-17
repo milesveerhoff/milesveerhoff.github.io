@@ -105,6 +105,16 @@
             margin: 0 auto 2rem auto;
         }
 
+        /* Allow manual dismissal to hide the alert container */
+        body.manual-hide #ui-container {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+        }
+
         /* Alert Color Phases */
         body.green-phase #ui-container { 
             background-color: var(--status-green-bg); 
