@@ -171,7 +171,7 @@
             padding-top: 1rem;
             border-top: 1px dashed #ccc;
             font-style: italic;
-            color: #0071BC;
+            color: #333;
             font-weight: bold;
         }
 
@@ -323,53 +323,65 @@
     // Track current phase to update favicon only on change
     let currentFaviconPhase = 'default'; 
 
-    function setFavicon(color) {
+    function setFavicon(color, date = new Date()) {
         const canvas = document.createElement('canvas');
         canvas.width = 64;
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
 
+        const cx = 32, cy = 32;
+
         // 1. Draw Background Circle
         ctx.beginPath();
-        ctx.arc(32, 32, 30, 0, 2 * Math.PI, false);
+        ctx.arc(cx, cy, 30, 0, 2 * Math.PI, false);
         ctx.fillStyle = color;
         ctx.fill();
         
         // 2. Draw Border (Darker for visibility)
         ctx.lineWidth = 4;
-        ctx.strokeStyle = '#555'; // Dark grey border
+        ctx.strokeStyle = '#555';
         ctx.stroke();
 
-        // 3. Draw Center Dot
+        // 3. Draw Hands based on provided time
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const seconds = date.getSeconds();
+
+        // Compute angles (degrees where 0 = 12 o'clock)
+        const hourDeg = ((hours % 12) + minutes / 60) * 30; // 360/12
+        const minuteDeg = (minutes + seconds / 60) * 6; // 360/60
+
+        const hourRad = (hourDeg - 90) * Math.PI / 180;
+        const minuteRad = (minuteDeg - 90) * Math.PI / 180;
+
+        // Hour hand
         ctx.beginPath();
-        ctx.arc(32, 32, 3, 0, 2 * Math.PI, false);
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#333';
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(hourRad) * 12, cy + Math.sin(hourRad) * 12);
+        ctx.stroke();
+
+        // Minute hand
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(minuteRad) * 18, cy + Math.sin(minuteRad) * 18);
+        ctx.stroke();
+
+        // 4. Draw Center Dot
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, 2 * Math.PI, false);
         ctx.fillStyle = '#333';
         ctx.fill();
-
-        // 4. Draw Hands (Static at 3:00 for clarity)
-        ctx.strokeStyle = '#333';
-        ctx.lineCap = 'round';
-
-        // Hour Hand
-        ctx.beginPath();
-        ctx.moveTo(32, 32);
-        ctx.lineTo(48, 32); 
-        ctx.lineWidth = 4;
-        ctx.stroke();
-
-        // Minute Hand
-        ctx.beginPath();
-        ctx.moveTo(32, 32);
-        ctx.lineTo(32, 10); 
-        ctx.lineWidth = 3;
-        ctx.stroke();
 
         const link = document.getElementById('favicon');
         link.href = canvas.toDataURL("image/png");
     }
 
-    // Initialize default White favicon
-    setFavicon('#ffffff');
+    // Initialize default White favicon using current time
+    setFavicon('#ffffff', new Date());
 
     function dismissTask() {
         document.getElementById('monitor-body').classList.add('manual-hide');
@@ -523,10 +535,10 @@
         if (newPhase !== currentFaviconPhase) {
             currentFaviconPhase = newPhase;
             // USING LIGHTER PASTEL COLORS FOR ICON
-            if (newPhase === 'green') setFavicon('#A5D6A7');       // Pastel Green
-            else if (newPhase === 'yellow') setFavicon('#FFF59D'); // Pastel Yellow
-            else if (newPhase === 'red') setFavicon('#EF9A9A');    // Pastel Red
-            else setFavicon('#ffffff');                            // White (Default)
+            if (newPhase === 'green') setFavicon('#A5D6A7', now);       // Pastel Green
+            else if (newPhase === 'yellow') setFavicon('#FFF59D', now); // Pastel Yellow
+            else if (newPhase === 'red') setFavicon('#EF9A9A', now);    // Pastel Red
+            else setFavicon('#ffffff', now);                            // White (Default)
         }
     }
 
