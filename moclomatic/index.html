@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Gate Assembly Setup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 border-b pb-4 text-blue-800">Golden Gate Assembly Setup</h1>
+
+        <div id="step-1">
+            <h2 class="text-xl font-semibold mb-4">Step 1: Upload Files</h2>
+            
+            <div class="grid grid-cols-1 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Fragments CSV</label>
+                    <input type="file" id="fragments-file" accept=".csv" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Constructs CSV</label>
+                    <input type="file" id="constructs-file" accept=".csv" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Python Template (template.py)</label>
+                    <input type="file" id="template-file" accept=".py,.txt" class="w-full border p-2 rounded">
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="use-toolkit" class="w-5 h-5 rounded text-blue-600">
+                    <span>Pull fragments from toolkit plates (MYT, YTK, YSD)</span>
+                </label>
+            </div>
+
+            <div id="toolkit-upload-container" class="mb-6 hidden bg-blue-50 p-4 rounded border border-blue-200">
+                <label class="block text-sm font-medium mb-1">Toolkit Data CSV (toolkit_data.csv)</label>
+                <input type="file" id="toolkit-file" accept=".csv" class="w-full border p-2 rounded bg-white">
+            </div>
+
+            <button id="btn-accept" disabled class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                Confirm Files & Load Data
+            </button>
+        </div>
+
+        <div id="step-2" class="hidden">
+            <h2 class="text-xl font-semibold mb-4 text-green-700">Step 2: Confirm Settings</h2>
+            
+            <div class="bg-gray-100 p-4 rounded text-sm mb-6 whitespace-pre-wrap font-mono" id="confirmation-message">
+                </div>
+
+            <h3 class="font-semibold text-lg mb-2 border-b pb-1">Insert Volumes (µL)</h3>
+            <p class="text-sm text-gray-600 mb-4">Volumes need to be manually calculated for 25/50 fmol of each fragment, should be >1µL:</p>
+            <div id="insert-volumes-container" class="grid grid-cols-2 gap-4 mb-6">
+                </div>
+
+            <h3 class="font-semibold text-lg mb-2 border-b pb-1">Reaction Settings</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm mb-1">MM per reaction (µL):</label>
+                    <input type="number" id="mm-per-reaction" value="6" step="0.1" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Total reaction vol (µL):</label>
+                    <input type="number" id="total-reaction-vol" value="15" step="0.1" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">MM Excess (%):</label>
+                    <input type="number" id="excess-percent" value="0" step="1" class="w-full border p-2 rounded">
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded mb-6 text-sm font-medium text-blue-900 border border-blue-200" id="live-calculations">
+                </div>
+
+            <h3 class="font-semibold text-lg mb-2 border-b pb-1">Thermocycler Protocol</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm mb-1">Digestion Temp (°C):</label>
+                    <input type="number" id="tc-digestion" value="37" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Ligation Temp (°C):</label>
+                    <input type="number" id="tc-ligation" value="16" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Inactivation Temp (°C):</label>
+                    <input type="number" id="tc-inactivation" value="65" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Cycles:</label>
+                    <input type="number" id="tc-cycles" value="25" class="w-full border p-2 rounded">
+                </div>
+            </div>
+
+            <h3 class="font-semibold text-lg mb-2 border-b pb-1">Save File</h3>
+            <div class="mb-6">
+                <label class="block text-sm mb-1">File Name:</label>
+                <input type="text" id="output-filename" value="saved_protocol.py" class="w-full border p-2 rounded md:w-1/2">
+            </div>
+
+            <button id="btn-generate" class="bg-green-600 text-white px-6 py-3 rounded text-lg font-semibold hover:bg-green-700">
+                Generate & Download Script
+            </button>
+            <button id="btn-back" class="ml-4 text-gray-600 underline">Back to Uploads</button>
+        </div>
+    </div>
+
+    <script>
+        // Global State Variables
+        let fragments = [], constructs = [], toolkitData = [], templateString = "";
+        let globalState = {}; // Holds calculated dictionaries for script generation
+
+        // DOM Elements
+        const fragInput = document.getElementById('fragments-file');
+        const constInput = document.getElementById('constructs-file');
+        const tempInput = document.getElementById('template-file');
+        const useToolkitCb = document.getElementById('use-toolkit');
+        const toolkitInput = document.getElementById('toolkit-file');
+        const toolkitContainer = document.getElementById('toolkit-upload-container');
+        const btnAccept = document.getElementById('btn-accept');
+
+        // File selection logic
+        useToolkitCb.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                toolkitContainer.classList.remove('hidden');
+            } else {
+                toolkitContainer.classList.add('hidden');
+            }
+            checkFiles();
+        });
+
+        [fragInput, constInput, tempInput, toolkitInput].forEach(input => {
+            input.addEventListener('change', checkFiles);
+        });
+
+        function checkFiles() {
+            const hasFrag = fragInput.files.length > 0;
+            const hasConst = constInput.files.length > 0;
+            const hasTemp = tempInput.files.length > 0;
+            const hasToolkit = !useToolkitCb.checked || toolkitInput.files.length > 0;
+            btnAccept.disabled = !(hasFrag && hasConst && hasTemp && hasToolkit);
+        }
+
+        // CSV parsing helper
+        function parseCSV(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: results => resolve(results.data),
+                    error: err => reject(err)
+                });
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        // Accept files and transition to Step 2
+        btnAccept.addEventListener('click', async () => {
+            try {
+                fragments = await parseCSV(fragInput.files[0]);
+                constructs = await parseCSV(constInput.files[0]);
+                templateString = await readFileAsText(tempInput.files[0]);
+                
+                if (useToolkitCb.checked) {
+                    toolkitData = await parseCSV(toolkitInput.files[0]);
+                }
+
+                processData();
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
+            } catch (err) {
+                alert("Error reading files: " + err.message);
+            }
+        });
+
+        document.getElementById('btn-back').addEventListener('click', () => {
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        });
+
+        // Python logic translation
+        function processData() {
+            const fragmentNames = fragments.map(f => Object.values(f)[0]); // First column
+            
+            let toolkitPlateWells = {};
+            let toolkitKeys = new Set();
+            let toolkitLocations = {};
+
+            if (useToolkitCb.checked) {
+                toolkitData.forEach(row => {
+                    const toolkit = String(row["Plate"]);
+                    toolkitKeys.add(toolkit);
+                    if (!toolkitLocations[toolkit]) toolkitLocations[toolkit] = {};
+                    toolkitLocations[toolkit][row["Name"]] = row["Position"];
+                });
+
+                fragmentNames.forEach(fragName => {
+                    let found = false;
+                    for (let toolkit of toolkitKeys) {
+                        if (fragName.includes(toolkit)) {
+                            for (let [plasmidName, position] of Object.entries(toolkitLocations[toolkit])) {
+                                if (fragName.includes(plasmidName)) {
+                                    toolkitPlateWells[fragName] = [toolkit, position];
+                                    found = true; break;
+                                }
+                            }
+                        }
+                        if (found) break;
+                    }
+                });
+            }
+
+            // Location generation A1-D6 (24 well rack)
+            let locations = [];
+            for (let i = 0; i < 24; i++) {
+                locations.push(String.fromCharCode(65 + Math.floor(i / 6)) + (i % 6 + 1));
+            }
+
+            let inserts = [];
+            let insertPlateMap = {};
+            let nonToolkitIdx = 0;
+
+            fragmentNames.forEach(fragName => {
+                if (useToolkitCb.checked && toolkitPlateWells[fragName]) {
+                    const [plate, pos] = toolkitPlateWells[fragName];
+                    insertPlateMap[fragName] = [plate, pos];
+                    inserts.push([plate, pos]);
+                } else {
+                    insertPlateMap[fragName] = ["tube_rack", locations[nonToolkitIdx]];
+                    inserts.push(["tube_rack", locations[nonToolkitIdx]]);
+                    nonToolkitIdx++;
+                }
+            });
+
+            const masterMixLoc = locations[nonToolkitIdx];
+            const waterLoc = locations[nonToolkitIdx + 1];
+
+            // Construct tubes A1-H12 (96 well plate)
+            let constructTubes = [];
+            for (let i = 0; i < constructs.length; i++) {
+                constructTubes.push(String.fromCharCode(65 + Math.floor(i / 12)) + (i % 12 + 1));
+            }
+
+            let insertLocations = {};
+            fragments.forEach((f, i) => {
+                insertLocations[Object.values(f)[0]] = inserts[i];
+            });
+
+            // Extract construct items (skip "Name" if exists, or first col)
+            let constructsList = constructs.map(row => {
+                let vals = Object.values(row);
+                return vals.slice(1).filter(v => v); // Assume first col is Construct Name
+            });
+            let constructNames = constructs.map((row, i) => row["Name"] || `Construct ${i + 1}`);
+
+            // Slots logic
+            let toolkitPlateSlots = {};
+            let availableSlots = ["1", "2", "3", "5", "6", "9"];
+            
+            // Simplified tip calculation logic
+            let numMmTransfers = constructTubes.length;
+            let numInsertTransfers = constructsList.reduce((acc, curr) => acc + curr.length, 0);
+            let totalP20Tips = numInsertTransfers + numMmTransfers;
+            let numP20Racks = totalP20Tips > 0 ? Math.floor((totalP20Tips - 1) / 96) + 1 : 0;
+            let toolkitSlots = availableSlots.slice(numP20Racks); // Remaining slots
+
+            let usedToolkits = new Set();
+            Object.values(insertPlateMap).forEach(([plate]) => {
+                if (!["tube_rack", "temp_module", "myt_plate"].includes(plate)) usedToolkits.add(plate);
+            });
+
+            Array.from(usedToolkits).sort().forEach((toolkit, idx) => {
+                toolkitPlateSlots[toolkit] = idx < toolkitSlots.length ? toolkitSlots[idx] : "extra";
+            });
+
+            // Build UI strings
+            let tpStr = "";
+            Object.entries(insertPlateMap).forEach(([insert, [plate, well]]) => {
+                if (toolkitPlateSlots[plate]) {
+                    tpStr += `[${well}] (${plate} Plate, Slot ${toolkitPlateSlots[plate]}): ${insert},\n`;
+                } else if (plate === "myt_plate") {
+                    tpStr += `[${well}] (MYT Plate): ${insert},\n`;
+                } else {
+                    tpStr += `[${well}] (Temp Module): ${insert},\n`;
+                }
+            });
+
+            tpStr += `\n[${masterMixLoc}] (Temp Module): Master Mix,\n`;
+            tpStr += `[${waterLoc}] (Temp Module): Molecular Grade Water,\n`;
+            tpStr += `\nConstructs will be built in the thermocycler module:\n\n`;
+            constructTubes.forEach((loc, i) => {
+                tpStr += `[${loc}]: ${constructNames[i]},\n`;
+            });
+
+            document.getElementById('confirmation-message').innerText = 
+                `Loaded ${fragments.length} fragments and ${constructs.length} constructs.\n\nReagents will be pulled from these locations:\n\n${tpStr}`;
+
+            // Populate volume inputs
+            const volContainer = document.getElementById('insert-volumes-container');
+            volContainer.innerHTML = '';
+            fragments.forEach(f => {
+                const fragName = Object.values(f)[0];
+                const defaultVol = f.Volume ? f.Volume : 1.0;
+                const bin = f.Bin ? `(${f.Bin}) ` : '';
+                
+                volContainer.innerHTML += `
+                    <div class="flex items-center space-x-2 bg-white p-2 border rounded">
+                        <label class="text-sm truncate w-2/3" title="${fragName}">${bin}${fragName}</label>
+                        <input type="number" step="0.1" class="w-1/3 border p-1 rounded volume-input" data-frag="${fragName}" value="${defaultVol}">
+                    </div>`;
+            });
+
+            // Save global state for template rendering
+            globalState = {
+                tube_placements: tpStr,
+                inserts: insertLocations,
+                master_mix: masterMixLoc,
+                construct_tubes: constructTubes,
+                constructs: constructsList,
+                total_p20_tips: totalP20Tips,
+                total_p300_tips: 0
+            };
+
+            // Setup live calculation listeners
+            const calcInputs = document.querySelectorAll('#mm-per-reaction, #total-reaction-vol, #excess-percent, .volume-input');
+            calcInputs.forEach(input => input.addEventListener('input', updateLiveCalculations));
+            updateLiveCalculations();
+        }
+
+        function updateLiveCalculations() {
+            const mmPer = parseFloat(document.getElementById('mm-per-reaction').value) || 0;
+            const reactVol = parseFloat(document.getElementById('total-reaction-vol').value) || 0;
+            const excess = parseFloat(document.getElementById('excess-percent').value) || 0;
+
+            let volDict = {};
+            document.querySelectorAll('.volume-input').forEach(input => {
+                volDict[input.getAttribute('data-frag')] = parseFloat(input.value) || 1.0;
+            });
+
+            let waterPerReaction = [];
+            globalState.constructs.forEach(construct => {
+                let totalInsertVol = construct.reduce((sum, insert) => sum + (volDict[insert] || 0), 0);
+                let waterVol = reactVol - (mmPer + totalInsertVol);
+                waterPerReaction.push(Math.round(waterVol * 100) / 100);
+            });
+
+            let nReactions = globalState.constructs.length;
+            let totalMm = mmPer * nReactions;
+            let totalMmExcess = Math.round(totalMm * (1 + excess / 100));
+
+            let totalWater = waterPerReaction.reduce((a, b) => a + b, 0);
+
+            document.getElementById('live-calculations').innerHTML = `
+                <p><strong>Total master mix (with ${excess}% excess):</strong> ${totalMmExcess} µL</p>
+                <p><strong>Water per reaction:</strong> [${waterPerReaction.join(', ')}] µL</p>
+                <p><strong>Total water needed:</strong> ${Math.round(totalWater * 100) / 100} µL</p>
+            `;
+
+            globalState.vol_per_insert = volDict;
+            globalState.water_per_reaction = waterPerReaction;
+            globalState.mm_per_reaction = mmPer;
+            globalState.reaction_vol = reactVol;
+            globalState.vol_master_mix_per_reaction = Array(nReactions).fill(mmPer);
+        }
+
+        // Helper function to turn JS objects into Python-formatted strings for the template replacement
+        function toPythonString(obj) {
+            if (Array.isArray(obj)) {
+                return '[' + obj.map(toPythonString).join(', ') + ']';
+            } else if (typeof obj === 'object' && obj !== null) {
+                let entries = Object.entries(obj).map(([k, v]) => `'${k}': ${toPythonString(v)}`);
+                return '{' + entries.join(', ') + '}';
+            } else if (typeof obj === 'string') {
+                return `'${obj}'`; // Escape strings with quotes
+            }
+            return String(obj); // Numbers, booleans
+        }
+
+        document.getElementById('btn-generate').addEventListener('click', () => {
+            // Update latest inputs
+            globalState.reaction_temp = document.getElementById('tc-digestion').value;
+            globalState.ligation_temp = document.getElementById('tc-ligation').value;
+            globalState.inactivation_temp = document.getElementById('tc-inactivation').value;
+            globalState.num_cycles = document.getElementById('tc-cycles').value;
+
+            // Python format string replacement: {variable}
+            let finalScript = templateString.replace(/\{(\w+)\}/g, function(match, key) {
+                if (globalState.hasOwnProperty(key)) {
+                    // Convert JS objects to Python strings where necessary
+                    if (key === 'tube_placements' || key === 'reaction_temp' || key === 'ligation_temp' || key === 'inactivation_temp' || key === 'num_cycles' || key === 'reaction_vol' || key === 'mm_per_reaction' || key === 'total_p20_tips' || key === 'total_p300_tips') {
+                         return globalState[key]; // raw primitives or pre-formatted strings
+                    } else {
+                         return toPythonString(globalState[key]); // dicts and lists
+                    }
+                }
+                return match;
+            });
+
+            // Trigger file download
+            const fileName = document.getElementById('output-filename').value || "saved_protocol.py";
+            const blob = new Blob([finalScript], { type: "text/x-python" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+    </script>
+</body>
+</html>
