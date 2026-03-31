@@ -13,8 +13,8 @@
         <h1 class="text-2xl font-bold mb-6 border-b pb-4 text-blue-800">Golden Gate Assembly Setup</h1>
 
         <div id="step-1">
+
             <h2 class="text-xl font-semibold mb-4">Step 1: Upload Files</h2>
-            
             <div class="grid grid-cols-1 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Fragments CSV</label>
@@ -25,21 +25,24 @@
                     <input type="file" id="constructs-file" accept=".csv" class="w-full border p-2 rounded">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Python Template (template.py)</label>
+                    <label class="block text-sm font-medium mb-1">Protocol Type</label>
+                    <select id="protocol-type" class="w-full border p-2 rounded">
+                        <option value="golden-gate" selected>Golden Gate (default)</option>
+                        <option value="custom">Custom Template</option>
+                    </select>
+                </div>
+                <div id="custom-template-upload" class="hidden">
+                    <label class="block text-sm font-medium mb-1">Upload Custom Python Template</label>
                     <input type="file" id="template-file" accept=".py,.txt" class="w-full border p-2 rounded">
                 </div>
             </div>
 
             <div class="mb-6">
+
                 <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="use-toolkit" class="w-5 h-5 rounded text-blue-600">
+                    <input type="checkbox" id="use-toolkit" class="w-5 h-5 rounded text-blue-600" checked>
                     <span>Pull fragments from toolkit plates (MYT, YTK, YSD)</span>
                 </label>
-            </div>
-
-            <div id="toolkit-upload-container" class="mb-6 hidden bg-blue-50 p-4 rounded border border-blue-200">
-                <label class="block text-sm font-medium mb-1">Toolkit Data CSV (toolkit_data.csv)</label>
-                <input type="file" id="toolkit-file" accept=".csv" class="w-full border p-2 rounded bg-white">
             </div>
 
             <button id="btn-accept" disabled class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -118,32 +121,41 @@
         // DOM Elements
         const fragInput = document.getElementById('fragments-file');
         const constInput = document.getElementById('constructs-file');
+        const protocolType = document.getElementById('protocol-type');
+        const customTemplateUpload = document.getElementById('custom-template-upload');
         const tempInput = document.getElementById('template-file');
         const useToolkitCb = document.getElementById('use-toolkit');
-        const toolkitInput = document.getElementById('toolkit-file');
-        const toolkitContainer = document.getElementById('toolkit-upload-container');
         const btnAccept = document.getElementById('btn-accept');
 
         // File selection logic
-        useToolkitCb.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                toolkitContainer.classList.remove('hidden');
+
+
+        // No toolkit upload container, just checkFiles on change
+        useToolkitCb.addEventListener('change', checkFiles);
+
+        protocolType.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                customTemplateUpload.classList.remove('hidden');
             } else {
-                toolkitContainer.classList.add('hidden');
+                customTemplateUpload.classList.add('hidden');
             }
             checkFiles();
         });
 
-        [fragInput, constInput, tempInput, toolkitInput].forEach(input => {
-            input.addEventListener('change', checkFiles);
+        [fragInput, constInput, tempInput, protocolType].forEach(input => {
+            if (input) input.addEventListener('change', checkFiles);
         });
 
         function checkFiles() {
             const hasFrag = fragInput.files.length > 0;
             const hasConst = constInput.files.length > 0;
-            const hasTemp = tempInput.files.length > 0;
-            const hasToolkit = !useToolkitCb.checked || toolkitInput.files.length > 0;
-            btnAccept.disabled = !(hasFrag && hasConst && hasTemp && hasToolkit);
+            const protocol = protocolType.value;
+            let hasTemp = true;
+            if (protocol === 'custom') {
+                hasTemp = tempInput.files.length > 0;
+            }
+            // Toolkit always available if checked, no upload needed
+            btnAccept.disabled = !(hasFrag && hasConst && hasTemp);
         }
 
         // CSV parsing helper
@@ -168,16 +180,34 @@
         }
 
         // Accept files and transition to Step 2
+
         btnAccept.addEventListener('click', async () => {
             try {
                 fragments = await parseCSV(fragInput.files[0]);
                 constructs = await parseCSV(constInput.files[0]);
-                templateString = await readFileAsText(tempInput.files[0]);
-                
-                if (useToolkitCb.checked) {
-                    toolkitData = await parseCSV(toolkitInput.files[0]);
+                if (protocolType.value === 'custom') {
+                    templateString = await readFileAsText(tempInput.files[0]);
+                } else {
+                    // Golden Gate: fetch template.py from local directory
+                    templateString = await fetch('https://milesveerhoff.github.io/moclomatic/template.py').then(r => {
+                        if (!r.ok) throw new Error('Could not load template.py');
+                        return r.text();
+                    });
                 }
-
+                if (useToolkitCb.checked) {
+                    // Always fetch toolkit_data.csv from local directory
+                    toolkitData = await fetch('https://milesveerhoff.github.io/moclomatic/toolkit_data.csv').then(r => {
+                        if (!r.ok) throw new Error('Could not load toolkit_data.csv');
+                        return r.text();
+                    }).then(csvText => new Promise((resolve, reject) => {
+                        Papa.parse(csvText, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: results => resolve(results.data),
+                            error: err => reject(err)
+                        });
+                    }));
+                }
                 processData();
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.remove('hidden');
@@ -193,46 +223,35 @@
 
         // Python logic translation
         function processData() {
-            const fragmentNames = fragments.map(f => Object.values(f)[0]); // First column
-            
-            let toolkitPlateWells = {};
-            let toolkitKeys = new Set();
-            let toolkitLocations = {};
 
+            // --- FIX 1: Always assign toolkit plate to Slot 5 and label as MYT Plate ---
+            const fragmentNames = fragments.map(f => Object.values(f)[0]);
+            let toolkitPlateWells = {};
+            let toolkitLocations = {};
             if (useToolkitCb.checked) {
                 toolkitData.forEach(row => {
-                    const toolkit = String(row["Plate"]);
-                    toolkitKeys.add(toolkit);
-                    if (!toolkitLocations[toolkit]) toolkitLocations[toolkit] = {};
-                    toolkitLocations[toolkit][row["Name"]] = row["Position"];
+                    if (!toolkitLocations['MYT']) toolkitLocations['MYT'] = {};
+                    toolkitLocations['MYT'][row["Name"]] = row["Position"];
                 });
-
                 fragmentNames.forEach(fragName => {
                     let found = false;
-                    for (let toolkit of toolkitKeys) {
-                        if (fragName.includes(toolkit)) {
-                            for (let [plasmidName, position] of Object.entries(toolkitLocations[toolkit])) {
-                                if (fragName.includes(plasmidName)) {
-                                    toolkitPlateWells[fragName] = [toolkit, position];
-                                    found = true; break;
-                                }
-                            }
+                    for (let [plasmidName, position] of Object.entries(toolkitLocations['MYT'])) {
+                        if (fragName.includes(plasmidName)) {
+                            toolkitPlateWells[fragName] = ['MYT', position];
+                            found = true; break;
                         }
-                        if (found) break;
                     }
                 });
             }
 
-            // Location generation A1-D6 (24 well rack)
+            // --- FIX 3: Always use A1 for master mix, A2 for water ---
             let locations = [];
             for (let i = 0; i < 24; i++) {
                 locations.push(String.fromCharCode(65 + Math.floor(i / 6)) + (i % 6 + 1));
             }
-
             let inserts = [];
             let insertPlateMap = {};
             let nonToolkitIdx = 0;
-
             fragmentNames.forEach(fragName => {
                 if (useToolkitCb.checked && toolkitPlateWells[fragName]) {
                     const [plate, pos] = toolkitPlateWells[fragName];
@@ -244,69 +263,49 @@
                     nonToolkitIdx++;
                 }
             });
+            const masterMixLoc = 'A1';
+            const waterLoc = 'A2';
 
-            const masterMixLoc = locations[nonToolkitIdx];
-            const waterLoc = locations[nonToolkitIdx + 1];
-
-            // Construct tubes A1-H12 (96 well plate)
+            // --- FIX 2: Only include actual fragment names in constructs ---
             let constructTubes = [];
             for (let i = 0; i < constructs.length; i++) {
                 constructTubes.push(String.fromCharCode(65 + Math.floor(i / 12)) + (i % 12 + 1));
             }
-
             let insertLocations = {};
             fragments.forEach((f, i) => {
                 insertLocations[Object.values(f)[0]] = inserts[i];
             });
-
-            // Extract construct items (skip "Name" if exists, or first col)
             let constructsList = constructs.map(row => {
                 let vals = Object.values(row);
-                return vals.slice(1).filter(v => v); // Assume first col is Construct Name
+                // Only keep values that match fragmentNames
+                return vals.filter(v => fragmentNames.includes(v));
             });
             let constructNames = constructs.map((row, i) => row["Name"] || `Construct ${i + 1}`);
 
-            // Slots logic
-            let toolkitPlateSlots = {};
-            let availableSlots = ["1", "2", "3", "5", "6", "9"];
-            
-            // Simplified tip calculation logic
-            let numMmTransfers = constructTubes.length;
-            let numInsertTransfers = constructsList.reduce((acc, curr) => acc + curr.length, 0);
-            let totalP20Tips = numInsertTransfers + numMmTransfers;
-            let numP20Racks = totalP20Tips > 0 ? Math.floor((totalP20Tips - 1) / 96) + 1 : 0;
-            let toolkitSlots = availableSlots.slice(numP20Racks); // Remaining slots
+            // --- FIX 1: Always assign MYT Plate to Slot 5 ---
+            let toolkitPlateSlots = { 'MYT': '5' };
 
-            let usedToolkits = new Set();
-            Object.values(insertPlateMap).forEach(([plate]) => {
-                if (!["tube_rack", "temp_module", "myt_plate"].includes(plate)) usedToolkits.add(plate);
-            });
-
-            Array.from(usedToolkits).sort().forEach((toolkit, idx) => {
-                toolkitPlateSlots[toolkit] = idx < toolkitSlots.length ? toolkitSlots[idx] : "extra";
-            });
-
-            // Build UI strings
+            // --- FIX 4: Ensure all volumes are floats ---
             let tpStr = "";
             Object.entries(insertPlateMap).forEach(([insert, [plate, well]]) => {
-                if (toolkitPlateSlots[plate]) {
-                    tpStr += `[${well}] (${plate} Plate, Slot ${toolkitPlateSlots[plate]}): ${insert},\n`;
-                } else if (plate === "myt_plate") {
-                    tpStr += `[${well}] (MYT Plate): ${insert},\n`;
+                if (plate === 'MYT') {
+                    tpStr += `[${well}] (MYT Plate, Slot 5): ${insert},\n`;
                 } else {
                     tpStr += `[${well}] (Temp Module): ${insert},\n`;
                 }
             });
-
-            tpStr += `\n[${masterMixLoc}] (Temp Module): Master Mix,\n`;
-            tpStr += `[${waterLoc}] (Temp Module): Molecular Grade Water,\n`;
+            tpStr += `\n[A1] (Temp Module): Master Mix,\n`;
+            tpStr += `[A2] (Temp Module): Molecular Grade Water,\n`;
             tpStr += `\nConstructs will be built in the thermocycler module:\n\n`;
             constructTubes.forEach((loc, i) => {
                 tpStr += `[${loc}]: ${constructNames[i]},\n`;
             });
 
+            // --- FIX 6: Add toolkit plate summary to metadata ---
+            let toolkitSummary = '\n\nToolkit plate locations on deck:\n  MYT Plate: Slot 5';
+
             document.getElementById('confirmation-message').innerText = 
-                `Loaded ${fragments.length} fragments and ${constructs.length} constructs.\n\nReagents will be pulled from these locations:\n\n${tpStr}`;
+                `Loaded ${fragments.length} fragments and ${constructs.length} constructs.\n\nReagents will be pulled from these locations:\n\n${tpStr}${toolkitSummary}`;
 
             // Populate volume inputs
             const volContainer = document.getElementById('insert-volumes-container');
@@ -324,14 +323,26 @@
             });
 
             // Save global state for template rendering
+            // --- FIX 2/4: Ensure inserts are tuples, volumes are floats ---
+            let insertsAsTuples = {};
+            Object.entries(insertLocations).forEach(([k, v]) => {
+                insertsAsTuples[k] = Array.isArray(v) ? `('${v[0]}', '${v[1]}')` : v;
+            });
+            // --- FIX 4: Ensure all volumes are floats ---
+            let volDict = {};
+            document.querySelectorAll('.volume-input').forEach(input => {
+                volDict[input.getAttribute('data-frag')] = parseFloat(input.value) || 1.0;
+            });
             globalState = {
                 tube_placements: tpStr,
-                inserts: insertLocations,
-                master_mix: masterMixLoc,
+                inserts: insertsAsTuples,
+                master_mix: 'A1',
                 construct_tubes: constructTubes,
                 constructs: constructsList,
-                total_p20_tips: totalP20Tips,
-                total_p300_tips: 0
+                total_p20_tips: constructTubes.length + constructsList.reduce((acc, curr) => acc + curr.length, 0),
+                total_p300_tips: 0,
+                toolkit_summary: toolkitSummary,
+                vol_per_insert: volDict
             };
 
             // Setup live calculation listeners
@@ -381,10 +392,22 @@
             if (Array.isArray(obj)) {
                 return '[' + obj.map(toPythonString).join(', ') + ']';
             } else if (typeof obj === 'object' && obj !== null) {
-                let entries = Object.entries(obj).map(([k, v]) => `'${k}': ${toPythonString(v)}`);
+                // Special case: tuple representation (for inserts)
+                if (obj._isTuple && Array.isArray(obj.values)) {
+                    return '(' + obj.values.map(toPythonString).join(', ') + ')';
+                }
+                let entries = Object.entries(obj).map(([k, v]) => {
+                    // If value is a tuple (array of length 2 and not a string), format as tuple
+                    if (Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' && typeof v[1] === 'string') {
+                        return `'${k}': (${toPythonString(v[0])}, ${toPythonString(v[1])})`;
+                    }
+                    return `'${k}': ${toPythonString(v)}`;
+                });
                 return '{' + entries.join(', ') + '}';
             } else if (typeof obj === 'string') {
-                return `'${obj}'`; // Escape strings with quotes
+                // Only quote if not already quoted in template context
+                // Escape single quotes
+                return `'${obj.replace(/'/g, "\\'")}'`;
             }
             return String(obj); // Numbers, booleans
         }
@@ -398,15 +421,33 @@
 
             // Python format string replacement: {variable}
             let finalScript = templateString.replace(/\{(\w+)\}/g, function(match, key) {
-                if (globalState.hasOwnProperty(key)) {
-                    // Convert JS objects to Python strings where necessary
-                    if (key === 'tube_placements' || key === 'reaction_temp' || key === 'ligation_temp' || key === 'inactivation_temp' || key === 'num_cycles' || key === 'reaction_vol' || key === 'mm_per_reaction' || key === 'total_p20_tips' || key === 'total_p300_tips') {
-                         return globalState[key]; // raw primitives or pre-formatted strings
-                    } else {
-                         return toPythonString(globalState[key]); // dicts and lists
-                    }
+                if (!globalState.hasOwnProperty(key)) return match;
+                let val = globalState[key];
+                // toolkit_summary and tube_placements are plain strings (not quoted)
+                if (key === 'tube_placements' || key === 'toolkit_summary') {
+                    return String(val).replace(/'/g, "\\'");
                 }
-                return match;
+                // Special handling for inserts: dict of tuples
+                if (key === 'inserts') {
+                    let entries = Object.entries(val).map(([k, v]) => {
+                        if (Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' && typeof v[1] === 'string') {
+                            return `'${k}': (${toPythonString(v[0])}, ${toPythonString(v[1])})`;
+                        }
+                        return `'${k}': ${toPythonString(v)}`;
+                    });
+                    return '{' + entries.join(', ') + '}';
+                }
+                // Constructs: list of lists of strings
+                if (key === 'constructs') {
+                    return '[' + val.map(arr => '[' + arr.map(x => toPythonString(x)).join(', ') + ']').join(', ') + ']';
+                }
+                // vol_per_insert: dict of floats
+                if (key === 'vol_per_insert') {
+                    let entries = Object.entries(val).map(([k, v]) => `'${k}': ${parseFloat(v)}`);
+                    return '{' + entries.join(', ') + '}';
+                }
+                // For numbers, booleans, arrays, objects, strings
+                return toPythonString(val);
             });
 
             // Trigger file download
