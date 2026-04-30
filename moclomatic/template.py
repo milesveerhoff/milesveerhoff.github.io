@@ -24,6 +24,10 @@ inactivation_temp = {inactivation_temp} # type: ignore
 reaction_vol = {reaction_vol} # type: ignore
 num_cycles = {num_cycles} # type: ignore
 
+# Hardware config
+p20_mount = {p20_mount} # type: ignore
+p300_mount = {p300_mount} # type: ignore
+
 def run(protocol: protocol_api.ProtocolContext):
     # --- TIP USAGE CHECK & TIPRACK LOADING ---
     num_master_mix_transfers = len(construct_tubes)
@@ -45,10 +49,12 @@ def run(protocol: protocol_api.ProtocolContext):
     # Load tip racks
     tips20_racks = []
     tips300_racks = []
+
     if total_p20_tips > 0:
         tips20_racks = [protocol.load_labware("opentrons_96_tiprack_20ul", slot) for slot in p20_slots]
     if total_p300_tips > 0:
         tips300_racks = [protocol.load_labware("opentrons_96_tiprack_300ul", slot) for slot in p300_slots]
+        
     # Load other labware
     use_reservoir_for_mm = sum(vol_master_mix_per_reaction) > 1000
     if use_reservoir_for_mm:
@@ -61,6 +67,7 @@ def run(protocol: protocol_api.ProtocolContext):
     temp_tubes = temp_mod.load_labware(
         "opentrons_24_aluminumblock_nest_1.5ml_snapcap"
     )
+
     # --- Load all toolkit plates needed ---
     toolkit_plate_types = set()
     for val in inserts.values():
@@ -77,13 +84,14 @@ def run(protocol: protocol_api.ProtocolContext):
 
     # Initialize pipettes with all loaded tip racks
     if tips300_racks:
-        p300 = protocol.load_instrument("p300_single_gen2", "right", tip_racks=tips300_racks)
+        p300 = protocol.load_instrument("p300_single_gen2", p300_mount, tip_racks=tips300_racks)
     else:
-        p300 = protocol.load_instrument("p300_single_gen2", "right")
+        p300 = protocol.load_instrument("p300_single_gen2", p300_mount)
+        
     if tips20_racks:
-        p20 = protocol.load_instrument("p20_single_gen2", "left", tip_racks=tips20_racks)
+        p20 = protocol.load_instrument("p20_single_gen2", p20_mount, tip_racks=tips20_racks)
     else:
-        p20 = protocol.load_instrument("p20_single_gen2", "left")
+        p20 = protocol.load_instrument("p20_single_gen2", p20_mount)
 
     # --- TIP USAGE CHECK ---
     if (total_p20_tips + total_p300_tips) > 480:
