@@ -1,13 +1,13 @@
 import opentrons.execute # type: ignore
 from opentrons import protocol_api # type: ignore
-metadata = {{"apiLevel": "2.22", "description": '''{tube_placements}'''}}
+metadata = {"apiLevel": "2.22", "description": '''{tube_placements}'''}
 
 # Fragments and constructs
 inserts = {inserts} # type: ignore
 constructs = {constructs} # type: ignore
 
 # Tube rack locations of reagents
-master_mix = f'{master_mix}' # type: ignore
+master_mix = {master_mix} # type: ignore
 reagent_tubes = [master_mix] + list(inserts.values())
 
 # Construct Tube Locations
