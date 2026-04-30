@@ -27,6 +27,7 @@ num_cycles = {num_cycles} # type: ignore
 # Hardware config
 p20_mount = {p20_mount} # type: ignore
 p300_mount = {p300_mount} # type: ignore
+tc_module = {tc_module} # type: ignore
 
 def run(protocol: protocol_api.ProtocolContext):
     # --- TIP USAGE CHECK & TIPRACK LOADING ---
@@ -59,7 +60,7 @@ def run(protocol: protocol_api.ProtocolContext):
     use_reservoir_for_mm = sum(vol_master_mix_per_reaction) > 1000
     if use_reservoir_for_mm:
         master_mix_reservoir = protocol.load_labware("nest_12_reservoir_15ml", available_slots[num_p20_racks:num_p20_racks+num_p300_racks:num_p300_racks+1])  # Use slot 5 for master mix
-    tc_mod = protocol.load_module(module_name="thermocyclerModuleV2")
+    tc_mod = protocol.load_module(module_name=tc_module)
     tc_plate = tc_mod.load_labware(name="opentrons_96_wellplate_200ul_pcr_full_skirt")
     temp_mod = protocol.load_module(
         module_name="temperature module gen2", location="4"
