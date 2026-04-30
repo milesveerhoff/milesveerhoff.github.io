@@ -6,6 +6,666 @@
     <title>Golden Gate Assembly Setup</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        /* Hide default details marker for cleaner accordions */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        
+        /* Custom scrollbar for the terminal output */
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-slate-100">
+        <h1 class="text-3xl font-extrabold mb-8 pb-4 border-b border-slate-200 text-slate-900 tracking-tight">
+            MoCloMatic: <span class="text-blue-600 font-semibold">Golden Gate Setup</span>
+        </h1>
+
+        <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-50/50 p-5 rounded-xl border border-blue-100 shadow-sm">
+            <div class="mb-4 sm:mb-0">
+                <h3 class="font-bold text-blue-900">Have a saved configuration?</h3>
+                <p class="text-sm text-blue-700/80 mt-1">Load your previously saved constructs, settings, temperatures, and volumes.</p>
+            </div>
+            <input type="file" id="config-upload" accept=".csv" class="hidden">
+            <button type="button" id="btn-load-config" class="bg-white text-blue-700 border border-blue-200 px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-300 hover:shadow font-medium transition-all duration-200 whitespace-nowrap">
+                Upload Config CSV
+            </button>
+        </div>
+
+        <div id="step-1" class="border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden mb-6 transition-all">
+            <h2 class="text-xl font-bold px-6 py-4 bg-slate-50 border-b border-slate-200 text-slate-800 flex items-center">
+                <span class="bg-blue-100 text-blue-700 rounded-full h-8 w-8 flex items-center justify-center text-sm mr-3">1</span>
+                Upload Files & Variables
+            </h2>
+            
+            <div class="p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700">Fragments CSV</label>
+                        <input type="file" id="fragments-file" accept=".csv" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700">Constructs CSV</label>
+                        <input type="file" id="constructs-file" accept=".csv" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700">Protocol Type</label>
+                        <select id="protocol-type" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-700">
+                            <option value="golden-gate" selected>Golden Gate (default)</option>
+                            <option value="custom">Custom Template</option>
+                        </select>
+                    </div>
+                    <div id="custom-template-upload" class="hidden transition-all">
+                        <label class="block text-sm font-semibold mb-2 text-slate-700">Upload Custom Python Template</label>
+                        <input type="file" id="template-file" accept=".py,.txt" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer text-sm">
+                    </div>
+                </div>
+
+                <div class="mb-8 space-y-3 bg-slate-50 p-5 rounded-lg border border-slate-200">
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" id="use-toolkit" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-colors" checked>
+                        <span class="text-slate-700 group-hover:text-slate-900 transition-colors">Pull fragments from toolkit plates (MYT, YTK, YSD)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" id="swap-pipettes" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-colors">
+                        <span class="text-slate-700 group-hover:text-slate-900 transition-colors">Swap Pipettes (Checked: p20 Right / p300 Left)</span>
+                    </label>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 flex justify-end">
+                    <button type="button" id="btn-accept" disabled class="bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Confirm Files & Load Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-2" class="border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden hidden transition-all">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                    <span class="bg-emerald-100 text-emerald-700 rounded-full h-8 w-8 flex items-center justify-center text-sm mr-3">2</span>
+                    Review & Generate
+                </h2>
+                <button type="button" id="btn-back" class="text-sm font-medium text-slate-500 hover:text-slate-800 underline transition-colors">
+                    Back to Uploads
+                </button>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                
+                <details open class="group mb-10 border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                    <summary class="font-semibold text-md cursor-pointer p-4 bg-slate-50 hover:bg-slate-100 flex justify-between items-center text-slate-700 select-none transition-colors border-b border-transparent group-open:border-slate-200">
+                        Deck Layout & Loaded Fragments
+                        <span class="transition-transform duration-200 group-open:rotate-180 text-xs text-slate-400">▼</span>
+                    </summary>
+                    <div class="bg-slate-900 text-emerald-400 p-5 text-sm whitespace-pre-wrap font-mono overflow-x-auto" id="confirmation-message"></div>
+                </details>
+
+                <div class="mb-10">
+                    <h3 class="font-bold text-lg mb-2 text-slate-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        Insert Volumes (µL)
+                    </h3>
+                    <p class="text-sm text-slate-500 mb-5">Volumes need to be manually calculated for 25/50 fmol of each fragment, should be >1µL.</p>
+                    <div id="insert-volumes-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        </div>
+                </div>
+
+                <div class="mb-10">
+                    <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center border-t border-slate-100 pt-6">
+                        <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Reaction Settings
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">MM per reaction (µL)</label>
+                            <input type="number" id="mm-per-reaction" value="6" step="0.1" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">Total reaction vol (µL)</label>
+                            <input type="number" id="total-reaction-vol" value="15" step="0.1" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">MM Excess (%)</label>
+                            <input type="number" id="excess-percent" value="0" step="1" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                    </div>
+                    <div class="bg-blue-50/70 p-5 rounded-lg border border-blue-100 text-sm font-medium text-blue-900 shadow-inner" id="live-calculations"></div>
+                </div>
+
+                <div class="mb-10">
+                    <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center border-t border-slate-100 pt-6">
+                        <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z"></path></svg>
+                        Thermocycler Protocol
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">TC Gen</label>
+                            <select id="tc-gen" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white">
+                                <option value="thermocyclerModuleV2" selected>Gen 2</option>
+                                <option value="thermocycler module">Gen 1</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">Digestion (°C)</label>
+                            <input type="number" id="tc-digestion" value="37" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">Ligation (°C)</label>
+                            <input type="number" id="tc-ligation" value="16" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">Inactivation (°C)</label>
+                            <input type="number" id="tc-inactivation" value="65" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2 text-slate-700">Cycles</label>
+                            <input type="number" id="tc-cycles" value="25" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold mb-2 text-slate-800">Final Script Filename</label>
+                        <input type="text" id="output-filename" value="saved_protocol.py" class="w-full md:w-1/2 border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono text-sm">
+                    </div>
+
+                    <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4 pt-2">
+                        <button type="button" id="btn-generate" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-lg text-lg font-bold shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex-1 md:flex-none text-center">
+                            Generate Script
+                        </button>
+                        
+                        <button type="button" id="btn-save-config" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-6 py-3.5 rounded-lg font-semibold shadow-sm hover:shadow transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 flex-1 md:flex-none text-center">
+                            Save Project Config To CSV
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 0. INITIALIZE / RESET ON PAGE LOAD
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('fragments-file').value = '';
+            document.getElementById('constructs-file').value = '';
+            document.getElementById('template-file').value = '';
+            document.getElementById('protocol-type').value = 'golden-gate';
+            document.getElementById('tc-gen').value = 'thermocyclerModuleV2';
+            document.getElementById('custom-template-upload').classList.add('hidden');
+            document.getElementById('use-toolkit').checked = true;
+            document.getElementById('swap-pipettes').checked = false;
+            
+            // Standard reset values
+            const defaults = {
+                'mm-per-reaction': '6',
+                'total-reaction-vol': '15',
+                'excess-percent': '0',
+                'tc-digestion': '37',
+                'tc-ligation': '16',
+                'tc-inactivation': '65',
+                'tc-cycles': '25',
+                'output-filename': 'saved_protocol.py'
+            };
+            for (const [id, val] of Object.entries(defaults)) {
+                document.getElementById(id).value = val;
+            }
+            btnAccept.disabled = true;
+        });
+
+        // ==========================================
+        // 1. GLOBAL STATE & DOM ELEMENTS
+        // ==========================================
+        let fragments = [], constructs = [], toolkitData = [];
+        let templateString = "";
+        let globalState = {}; 
+
+        const fragInput = document.getElementById('fragments-file');
+        const constInput = document.getElementById('constructs-file');
+        const tempInput = document.getElementById('template-file');
+        const protocolType = document.getElementById('protocol-type');
+        const customTemplateUpload = document.getElementById('custom-template-upload');
+        const useToolkitCb = document.getElementById('use-toolkit');
+
+        const btnAccept = document.getElementById('btn-accept');
+        const btnBack = document.getElementById('btn-back');
+        const btnGenerate = document.getElementById('btn-generate');
+        const step1Container = document.getElementById('step-1');
+        const step2Container = document.getElementById('step-2');
+
+        // ==========================================
+        // 2. EVENT LISTENERS
+        // ==========================================
+        protocolType.addEventListener('change', (e) => {
+            customTemplateUpload.classList.toggle('hidden', e.target.value !== 'custom');
+            validateFiles();
+        });
+
+        [fragInput, constInput, tempInput, protocolType, useToolkitCb].forEach(input => {
+            if (input) input.addEventListener('change', validateFiles);
+        });
+
+        btnAccept.addEventListener('click', async () => {
+            try {
+                // Change UI state to show loading
+                const originalText = btnAccept.innerText;
+                btnAccept.innerText = "Processing...";
+                btnAccept.disabled = true;
+
+                fragments = await parseCSV(fragInput.files[0]);
+                constructs = await parseCSV(constInput.files[0]);
+                templateString = await loadTemplate();
+                
+                if (useToolkitCb.checked) {
+                    toolkitData = await loadToolkitData();
+                }
+
+                processData();
+                
+                step1Container.classList.add('hidden');
+                step2Container.classList.remove('hidden');
+
+                // Reset button for when user comes back
+                btnAccept.innerText = originalText;
+                btnAccept.disabled = false;
+            } catch (err) {
+                alert("Error reading files: " + err.message);
+                btnAccept.innerText = "Confirm Files & Load Data";
+                btnAccept.disabled = false;
+            }
+        });
+
+        btnBack.addEventListener('click', () => {
+            step2Container.classList.add('hidden');
+            step1Container.classList.remove('hidden');
+        });
+
+        document.querySelectorAll('#mm-per-reaction, #total-reaction-vol, #excess-percent').forEach(input => {
+            input.addEventListener('input', updateLiveCalculations);
+        });
+
+        btnGenerate.addEventListener('click', generatePythonScript);
+
+        // ==========================================
+        // 3. FILE LOADING & PARSING HELPERS
+        // ==========================================
+        function validateFiles() {
+            const hasFrag = fragInput.files.length > 0;
+            const hasConst = constInput.files.length > 0;
+            const hasTemp = protocolType.value === 'custom' ? tempInput.files.length > 0 : true;
+            btnAccept.disabled = !(hasFrag && hasConst && hasTemp);
+        }
+
+        function parseCSV(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: results => resolve(results.data),
+                    error: err => reject(err)
+                });
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        async function loadTemplate() {
+            if (protocolType.value === 'custom') {
+                return await readFileAsText(tempInput.files[0]);
+            }
+            const response = await fetch('https://milesveerhoff.github.io/moclomatic/template.py');
+            if (!response.ok) throw new Error('Could not load template.py');
+            return await response.text();
+        }
+
+        async function loadToolkitData() {
+            const response = await fetch('https://milesveerhoff.github.io/moclomatic/toolkit_data.csv');
+            if (!response.ok) throw new Error('Could not load toolkit_data.csv');
+            const csvText = await response.text();
+            return new Promise((resolve, reject) => {
+                Papa.parse(csvText, { header: true, skipEmptyLines: true, complete: results => resolve(results.data), error: err => reject(err) });
+            });
+        }
+
+        // ==========================================
+        // 4. DATA PROCESSING LOGIC
+        // ==========================================
+        function processData() {
+            const fragmentNames = fragments.map(f => Object.values(f)[0]);
+            const constructNames = constructs.map((row, i) => row["Name"] || `Construct ${i + 1}`);
+            
+            const cleanConstructs = constructs.map(row => {
+                return Object.values(row).filter(val => fragmentNames.includes(val));
+            });
+
+            const toolkitLocations = findToolkitWells(fragmentNames);
+            const { insertLocations, placementText } = assignDeckLocations(fragmentNames, toolkitLocations);
+            const constructTubes = generateWellNames(constructs.length, 12); 
+
+            let finalPlacementText = placementText + 
+                `\n[A1] (Temp Module): Master Mix,\n[A2] (Temp Module): Molecular Grade Water,\n\n` +
+                `Constructs will be built in the thermocycler module:\n\n`;
+            
+            constructTubes.forEach((loc, i) => {
+                finalPlacementText += `[${loc}]: ${constructNames[i]},\n`;
+            });
+
+            const toolkitSummary = '\n\nToolkit plate locations on deck:\n  MYT Plate: Slot 5';
+            
+            document.getElementById('confirmation-message').innerText = 
+                `Loaded ${fragments.length} fragments and ${constructs.length} constructs.\n\nReagents will be pulled from these locations:\n\n${finalPlacementText}${toolkitSummary}`;
+
+            renderVolumeInputs(fragments);
+
+            globalState = {
+                tube_placements: finalPlacementText,
+                inserts: insertLocations, 
+                master_mix: 'A1',
+                construct_tubes: constructTubes,
+                constructs: cleanConstructs,
+                total_p20_tips: constructTubes.length + cleanConstructs.reduce((sum, curr) => sum + curr.length, 0),
+                total_p300_tips: 0,
+                toolkit_summary: toolkitSummary,
+                vol_per_insert: {} 
+            };
+
+            updateLiveCalculations();
+        }
+
+        function findToolkitWells(fragmentNames) {
+            const foundLocations = {};
+            if (!useToolkitCb.checked || toolkitData.length === 0) return foundLocations;
+
+            const mytLookup = {};
+            toolkitData.forEach(row => { mytLookup[row.Name] = row.Position; });
+
+            fragmentNames.forEach(fragName => {
+                for (let [plasmidName, position] of Object.entries(mytLookup)) {
+                    if (fragName.includes(plasmidName)) {
+                        foundLocations[fragName] = ['MYT', position];
+                        break;
+                    }
+                }
+            });
+            return foundLocations;
+        }
+
+        function assignDeckLocations(fragmentNames, toolkitLocations) {
+            const locations = {};
+            let placementText = "";
+            let tubeRackIndex = 0;
+            const tempModuleWells = generateWellNames(24, 6); 
+
+            fragmentNames.forEach(fragName => {
+                if (toolkitLocations[fragName]) {
+                    const [plate, well] = toolkitLocations[fragName];
+                    locations[fragName] = [plate, well];
+                    placementText += `[${well}] (MYT Plate, Slot 5): ${fragName},\n`;
+                } else {
+                    const well = tempModuleWells[tubeRackIndex];
+                    locations[fragName] = ["tube_rack", well];
+                    placementText += `[${well}] (Temp Module): ${fragName},\n`;
+                    tubeRackIndex++;
+                }
+            });
+
+            return { insertLocations: locations, placementText };
+        }
+
+        function generateWellNames(totalWells, colsPerRow) {
+            const wells = [];
+            for (let i = 0; i < totalWells; i++) {
+                const row = String.fromCharCode(65 + Math.floor(i / colsPerRow));
+                const col = (i % colsPerRow) + 1;
+                wells.push(`${row}${col}`);
+            }
+            return wells;
+        }
+
+        // ==========================================
+        // 5. UI UPDATES & CALCULATIONS
+        // ==========================================
+        function renderVolumeInputs(fragmentsData) {
+            const container = document.getElementById('insert-volumes-container');
+            container.innerHTML = '';
+            
+            fragmentsData.forEach(f => {
+                const fragName = Object.values(f)[0];
+                const defaultVol = f.Volume ? f.Volume : 1.0;
+                const bin = f.Bin ? `(${f.Bin}) ` : '';
+                
+                container.innerHTML += `
+                    <div class="flex items-center space-x-2 bg-white p-2.5 border border-slate-200 shadow-sm rounded-lg">
+                        <label class="text-sm truncate w-2/3 text-slate-700 font-medium" title="${fragName}">${bin}${fragName}</label>
+                        <input type="number" step="0.1" class="w-1/3 border border-slate-300 p-1.5 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors volume-input text-center font-mono" data-frag="${fragName}" value="${defaultVol}">
+                    </div>`;
+            });
+
+            document.querySelectorAll('.volume-input').forEach(input => {
+                input.addEventListener('input', updateLiveCalculations);
+            });
+        }
+
+        function updateLiveCalculations() {
+            const mmPerReaction = parseFloat(document.getElementById('mm-per-reaction').value) || 0;
+            const totalReactionVol = parseFloat(document.getElementById('total-reaction-vol').value) || 0;
+            const excessPercent = parseFloat(document.getElementById('excess-percent').value) || 0;
+
+            const currentVolumes = {};
+            document.querySelectorAll('.volume-input').forEach(input => {
+                currentVolumes[input.getAttribute('data-frag')] = parseFloat(input.value) || 1.0;
+            });
+
+            const waterPerReaction = globalState.constructs.map(construct => {
+                let totalInsertVol = construct.reduce((sum, insert) => sum + (currentVolumes[insert] || 0), 0);
+                let waterVol = totalReactionVol - (mmPerReaction + totalInsertVol);
+                return Math.round(waterVol * 100) / 100;
+            });
+
+            const nReactions = globalState.constructs.length;
+            const totalMm = mmPerReaction * nReactions;
+            const totalMmExcess = Math.round(totalMm * (1 + excessPercent / 100));
+            const totalWater = Math.round(waterPerReaction.reduce((a, b) => a + b, 0) * 100) / 100;
+
+            document.getElementById('live-calculations').innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:space-x-8">
+                    <p class="mb-1 sm:mb-0"><span class="text-blue-700 font-normal">Total master mix (+${excessPercent}%):</span> <strong class="text-blue-900">${totalMmExcess} µL</strong></p>
+                    <p><span class="text-blue-700 font-normal">Total water needed:</span> <strong class="text-blue-900">${totalWater} µL</strong></p>
+                </div>
+            `;
+
+            globalState.vol_per_insert = currentVolumes;
+            globalState.water_per_reaction = waterPerReaction;
+            globalState.mm_per_reaction = mmPerReaction;
+            globalState.reaction_vol = totalReactionVol;
+            globalState.vol_master_mix_per_reaction = Array(nReactions).fill(mmPerReaction);
+        }
+
+        // ==========================================
+        // 6. PYTHON SCRIPT & SAVING LOGIC
+        // ==========================================
+        function toPythonString(obj) {
+            if (Array.isArray(obj)) {
+                if (obj.length === 2 && typeof obj[0] === 'string' && typeof obj[1] === 'string') {
+                    return `('${obj[0]}', '${obj[1]}')`;
+                }
+                return '[' + obj.map(toPythonString).join(', ') + ']';
+            } 
+            if (typeof obj === 'object' && obj !== null) {
+                let entries = Object.entries(obj).map(([k, v]) => `'${k}': ${toPythonString(v)}`);
+                return '{' + entries.join(', ') + '}';
+            } 
+            if (typeof obj === 'string') {
+                return `'${obj.replace(/'/g, "\\'")}'`;
+            }
+            return String(obj); 
+        }
+
+        const configInputIds = [
+            'protocol-type', 'use-toolkit', 'swap-pipettes', 
+            'mm-per-reaction', 'total-reaction-vol', 'excess-percent', 
+            'tc-gen', 'tc-digestion', 'tc-ligation', 'tc-inactivation', 
+            'tc-cycles', 'output-filename'
+        ];
+
+        document.getElementById('btn-save-config').addEventListener('click', () => {
+            const configData = configInputIds.map(id => {
+                const el = document.getElementById(id);
+                const value = el.type === 'checkbox' ? el.checked : el.value;
+                return { SettingID: id, Value: value };
+            });
+
+            const currentVolumes = {};
+            document.querySelectorAll('.volume-input').forEach(input => {
+                currentVolumes[input.getAttribute('data-frag')] = parseFloat(input.value) || 1.0;
+            });
+
+            configData.push({ SettingID: '__fragments', Value: JSON.stringify(fragments) });
+            configData.push({ SettingID: '__constructs', Value: JSON.stringify(constructs) });
+            configData.push({ SettingID: '__volumes', Value: JSON.stringify(currentVolumes) });
+            configData.push({ SettingID: '__template', Value: templateString });
+            
+            if (toolkitData.length > 0) {
+                configData.push({ SettingID: '__toolkit', Value: JSON.stringify(toolkitData) });
+            }
+
+            const csvString = Papa.unparse(configData);
+            const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "moclomatic_project_save.csv";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        const configUploadInput = document.getElementById('config-upload');
+        document.getElementById('btn-load-config').addEventListener('click', () => {
+            configUploadInput.click();
+        });
+
+        configUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                complete: function(results) {
+                    let loadedVolumes = null;
+                    let hasProjectData = false;
+
+                    results.data.forEach(row => {
+                        if (row.SettingID === '__fragments') {
+                            fragments = JSON.parse(row.Value);
+                            hasProjectData = true;
+                        } else if (row.SettingID === '__constructs') {
+                            constructs = JSON.parse(row.Value);
+                            hasProjectData = true;
+                        } else if (row.SettingID === '__volumes') {
+                            loadedVolumes = JSON.parse(row.Value);
+                        } else if (row.SettingID === '__template') {
+                            templateString = row.Value;
+                        } else if (row.SettingID === '__toolkit') {
+                            toolkitData = JSON.parse(row.Value);
+                        } else {
+                            const el = document.getElementById(row.SettingID);
+                            if (el) {
+                                if (el.type === 'checkbox') {
+                                    el.checked = (row.Value === 'true');
+                                } else {
+                                    el.value = row.Value;
+                                }
+                            }
+                        }
+                    });
+
+                    if (hasProjectData && fragments.length > 0 && constructs.length > 0) {
+                        processData();
+
+                        if (loadedVolumes) {
+                            document.querySelectorAll('.volume-input').forEach(input => {
+                                const fragName = input.getAttribute('data-frag');
+                                if (loadedVolumes[fragName] !== undefined) {
+                                    input.value = loadedVolumes[fragName];
+                                }
+                            });
+                            updateLiveCalculations();
+                        }
+
+                        document.getElementById('step-1').classList.add('hidden');
+                        document.getElementById('step-2').classList.remove('hidden');
+                    } else {
+                        validateFiles();
+                    }
+                    configUploadInput.value = ''; 
+                },
+                error: function(err) {
+                    alert("Error loading config: " + err.message);
+                }
+            });
+        });
+
+        function generatePythonScript() {
+            globalState.reaction_temp = parseInt(document.getElementById('tc-digestion').value, 10);
+            globalState.ligation_temp = parseInt(document.getElementById('tc-ligation').value, 10);
+            globalState.inactivation_temp = parseInt(document.getElementById('tc-inactivation').value, 10);
+            globalState.num_cycles = parseInt(document.getElementById('tc-cycles').value, 10);
+            globalState.tc_module = document.getElementById('tc-gen').value;
+
+            const swapPipettes = document.getElementById('swap-pipettes').checked;
+            globalState.p20_mount = swapPipettes ? 'right' : 'left';
+            globalState.p300_mount = swapPipettes ? 'left' : 'right';
+
+            let finalScript = templateString.replace(/\{(\w+)\}/g, (match, key) => {
+                if (!globalState.hasOwnProperty(key)) return match;
+                
+                let val = globalState[key];
+                
+                if (key === 'tube_placements' || key === 'toolkit_summary') {
+                    return String(val).replace(/'/g, "\\'");
+                }
+                return toPythonString(val);
+            });
+
+            const fileName = document.getElementById('output-filename').value || "saved_protocol.py";
+            const blob = new Blob([finalScript], { type: "text/x-python" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Gate Assembly Setup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans p-8">
 
