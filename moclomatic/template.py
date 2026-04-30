@@ -68,7 +68,7 @@ def run(protocol: protocol_api.ProtocolContext):
             plate_type, _ = val
             if plate_type not in ("tube_rack", "temp_module"):
                 toolkit_plate_types.add(plate_type)
-    toolkit_plates = {{}}
+    toolkit_plates = {}
     for idx, plate_type in enumerate(sorted(toolkit_plate_types)):
         if idx < len(toolkit_slots):
             toolkit_plates[plate_type] = protocol.load_labware("nest_96_wellplate_200ul_flat", toolkit_slots[idx])
