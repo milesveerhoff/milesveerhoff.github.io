@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MoCloMatic Assembly Setup</title>
-    <link rel="icon" href="https://milesveerhoff.github.io/moclomatic/favicon.ico">
+    <link rel="icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -22,9 +22,15 @@
 <body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
 
     <div class="max-w-5xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-slate-100">
-        <h1 class="text-3xl font-extrabold mb-8 pb-4 border-b border-slate-200 text-slate-900 tracking-tight">
-            MoCloMatic: <span class="text-blue-600 font-semibold">Golden Gate Setup</span>
-        </h1>
+        <div class="mb-8 pb-4 border-b border-slate-200">
+            <a href="" class="inline-flex items-center no-underline" title="Reload Main Page">
+                <img src="logo.png" alt="MoCloMatic Logo" class="w-10 h-10 md:w-12 md:h-12 mr-4">
+                
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight m-0">
+                    MoCloMatic: <span class="text-blue-600 font-semibold">Golden Gate Setup</span>
+                </h1>
+            </a>
+        </div>
 
         <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-50/50 p-5 rounded-xl border border-blue-100 shadow-sm">
             <div class="mb-4 sm:mb-0">
@@ -57,7 +63,7 @@
                         <label class="block text-sm font-semibold mb-2 text-slate-700">Protocol Type</label>
                         <select id="protocol-type" class="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-slate-700">
                             <option value="golden-gate" selected>Golden Gate (default)</option>
-                            <option value="custom">Custom Template</option>
+                            <option value="custom">Custom Template (debug)</option>
                         </select>
                     </div>
                     <div id="custom-template-upload" class="hidden transition-all">
@@ -91,10 +97,7 @@
                     <span class="bg-emerald-100 text-emerald-700 rounded-full h-8 w-8 flex items-center justify-center text-sm mr-3">2</span>
                     Review & Generate
                 </h2>
-                <button type="button" id="btn-back" class="text-sm font-medium text-slate-500 hover:text-slate-800 underline transition-colors">
-                    Back to Uploads
-                </button>
-            </div>
+                </div>
             
             <div class="p-6 md:p-8">
                 
@@ -172,7 +175,7 @@
 
                 <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
                     <div class="mb-5">
-                        <label class="block text-sm font-bold mb-2 text-slate-800">Final Script Filename</label>
+                        <label class="block text-sm font-bold mb-2 text-slate-800">Save As:</label>
                         <input type="text" id="output-filename" value="saved_protocol.py" class="w-full md:w-1/2 border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono text-sm">
                     </div>
 
@@ -205,6 +208,9 @@
             document.getElementById('use-toolkit').checked = true;
             document.getElementById('swap-pipettes').checked = false;
             
+            // Ensure step 2 starts hidden on hard refresh/back
+            document.getElementById('step-2').classList.add('hidden');
+
             // Standard reset values
             const defaults = {
                 'mm-per-reaction': '6',
@@ -237,7 +243,6 @@
         const useToolkitCb = document.getElementById('use-toolkit');
 
         const btnAccept = document.getElementById('btn-accept');
-        const btnBack = document.getElementById('btn-back');
         const btnGenerate = document.getElementById('btn-generate');
         const step1Container = document.getElementById('step-1');
         const step2Container = document.getElementById('step-2');
@@ -271,10 +276,13 @@
 
                 processData();
                 
-                step1Container.classList.add('hidden');
+                // Show step 2 and scroll down to it (without hiding step 1)
                 step2Container.classList.remove('hidden');
+                setTimeout(() => {
+                    step2Container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
 
-                // Reset button for when user comes back
+                // Reset button
                 btnAccept.innerText = originalText;
                 btnAccept.disabled = false;
             } catch (err) {
@@ -282,11 +290,6 @@
                 btnAccept.innerText = "Confirm Files & Load Data";
                 btnAccept.disabled = false;
             }
-        });
-
-        btnBack.addEventListener('click', () => {
-            step2Container.classList.add('hidden');
-            step1Container.classList.remove('hidden');
         });
 
         document.querySelectorAll('#mm-per-reaction, #total-reaction-vol, #excess-percent').forEach(input => {
@@ -614,8 +617,13 @@
                             updateLiveCalculations();
                         }
 
-                        document.getElementById('step-1').classList.add('hidden');
-                        document.getElementById('step-2').classList.remove('hidden');
+                        // Show Step 2 and scroll down without hiding Step 1
+                        const step2 = document.getElementById('step-2');
+                        step2.classList.remove('hidden');
+                        setTimeout(() => {
+                            step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+
                     } else {
                         validateFiles();
                     }

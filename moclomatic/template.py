@@ -1,13 +1,13 @@
 import opentrons.execute # type: ignore
 from opentrons import protocol_api # type: ignore
-metadata = {"apiLevel": "2.22", "description": '''{tube_placements}'''}
+metadata = {{"apiLevel": "2.22", "description": '''{tube_placements}'''}}
 
 # Fragments and constructs
 inserts = {inserts} # type: ignore
 constructs = {constructs} # type: ignore
 
 # Tube rack locations of reagents
-master_mix = {master_mix} # type: ignore
+master_mix = f'{master_mix}' # type: ignore
 reagent_tubes = [master_mix] + list(inserts.values())
 
 # Construct Tube Locations
@@ -23,11 +23,6 @@ ligation_temp = {ligation_temp} # type: ignore
 inactivation_temp = {inactivation_temp} # type: ignore
 reaction_vol = {reaction_vol} # type: ignore
 num_cycles = {num_cycles} # type: ignore
-
-# Hardware config
-p20_mount = {p20_mount} # type: ignore
-p300_mount = {p300_mount} # type: ignore
-tc_module = {tc_module} # type: ignore
 
 def run(protocol: protocol_api.ProtocolContext):
     # --- TIP USAGE CHECK & TIPRACK LOADING ---
@@ -50,17 +45,15 @@ def run(protocol: protocol_api.ProtocolContext):
     # Load tip racks
     tips20_racks = []
     tips300_racks = []
-
     if total_p20_tips > 0:
         tips20_racks = [protocol.load_labware("opentrons_96_tiprack_20ul", slot) for slot in p20_slots]
     if total_p300_tips > 0:
         tips300_racks = [protocol.load_labware("opentrons_96_tiprack_300ul", slot) for slot in p300_slots]
-        
     # Load other labware
     use_reservoir_for_mm = sum(vol_master_mix_per_reaction) > 1000
     if use_reservoir_for_mm:
         master_mix_reservoir = protocol.load_labware("nest_12_reservoir_15ml", available_slots[num_p20_racks:num_p20_racks+num_p300_racks:num_p300_racks+1])  # Use slot 5 for master mix
-    tc_mod = protocol.load_module(module_name=tc_module)
+    tc_mod = protocol.load_module(module_name="thermocyclerModuleV2")
     tc_plate = tc_mod.load_labware(name="opentrons_96_wellplate_200ul_pcr_full_skirt")
     temp_mod = protocol.load_module(
         module_name="temperature module gen2", location="4"
@@ -68,7 +61,6 @@ def run(protocol: protocol_api.ProtocolContext):
     temp_tubes = temp_mod.load_labware(
         "opentrons_24_aluminumblock_nest_1.5ml_snapcap"
     )
-
     # --- Load all toolkit plates needed ---
     toolkit_plate_types = set()
     for val in inserts.values():
@@ -76,7 +68,7 @@ def run(protocol: protocol_api.ProtocolContext):
             plate_type, _ = val
             if plate_type not in ("tube_rack", "temp_module"):
                 toolkit_plate_types.add(plate_type)
-    toolkit_plates = {}
+    toolkit_plates = {{}}
     for idx, plate_type in enumerate(sorted(toolkit_plate_types)):
         if idx < len(toolkit_slots):
             toolkit_plates[plate_type] = protocol.load_labware("nest_96_wellplate_200ul_flat", toolkit_slots[idx])
@@ -85,14 +77,13 @@ def run(protocol: protocol_api.ProtocolContext):
 
     # Initialize pipettes with all loaded tip racks
     if tips300_racks:
-        p300 = protocol.load_instrument("p300_single_gen2", p300_mount, tip_racks=tips300_racks)
+        p300 = protocol.load_instrument("p300_single_gen2", "right", tip_racks=tips300_racks)
     else:
-        p300 = protocol.load_instrument("p300_single_gen2", p300_mount)
-        
+        p300 = protocol.load_instrument("p300_single_gen2", "right")
     if tips20_racks:
-        p20 = protocol.load_instrument("p20_single_gen2", p20_mount, tip_racks=tips20_racks)
+        p20 = protocol.load_instrument("p20_single_gen2", "left", tip_racks=tips20_racks)
     else:
-        p20 = protocol.load_instrument("p20_single_gen2", p20_mount)
+        p20 = protocol.load_instrument("p20_single_gen2", "left")
 
     # --- TIP USAGE CHECK ---
     if (total_p20_tips + total_p300_tips) > 480:
